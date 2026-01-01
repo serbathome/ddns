@@ -30,6 +30,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import HelpIcon from '@mui/icons-material/Help';
 
 const ManagementPage = ({ userEmail, token, onLogout }) => {
   const navigate = useNavigate();
@@ -115,20 +116,29 @@ const ManagementPage = ({ userEmail, token, onLogout }) => {
           gap: 2,
           mb: 4 
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <DashboardIcon sx={{ fontSize: { xs: 32, sm: 40 }, mr: 2, color: 'primary.main' }} />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>            <DashboardIcon sx={{ fontSize: { xs: 32, sm: 40 }, mr: 2, color: 'primary.main' }} />
             <Typography variant="h4" component="h2" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
               DynDNS Dashboard
             </Typography>
           </Box>
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<LogoutIcon />}
-            onClick={onLogout}
-          >
-            Logout
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<HelpIcon />}
+              onClick={() => navigate('/documentation')}
+            >
+              Help
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<LogoutIcon />}
+              onClick={onLogout}
+            >
+              Logout
+            </Button>
+          </Box>
         </Box>
 
         <Paper

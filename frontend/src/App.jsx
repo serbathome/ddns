@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AddDnsRecordPage from './pages/AddDnsRecordPage';
 import EditDnsRecordPage from './pages/EditDnsRecordPage';
+import DocumentationPage from './pages/DocumentationPage';
 
 const theme = createTheme({
   palette: {
@@ -110,6 +111,16 @@ function App() {
             element={
               isLoggedIn ? (
                 <EditDnsRecordPage token={userToken} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/documentation"
+            element={
+              isLoggedIn ? (
+                <DocumentationPage />
               ) : (
                 <Navigate to="/login" replace />
               )
