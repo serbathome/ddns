@@ -23,6 +23,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Add Azure DNS service
+builder.Services.AddSingleton<AzureDnsService>();
+
 // Add background service for DNS record activation
 builder.Services.AddHostedService<DnsRecordActivationService>();
 
@@ -209,6 +212,11 @@ app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, App
             return Results.StatusCode(500);
         }
         
+        // Store old hostname for cleanup
+        if (record.Hostname != request.Hostname)
+        {
+            record.OldHostname = record.Hostname;
+        }
         record.Hostname = request.Hostname;
     }
     record.Status = "updated";
