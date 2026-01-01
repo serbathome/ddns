@@ -26,8 +26,10 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy published application
 COPY --from=publish /app/publish .
 
-# Create directory for SQLite database with proper permissions
-RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
+# Create directories for SQLite database with proper permissions
+RUN mkdir -p /app/data /mnt/dnsdata && \
+    chown -R appuser:appuser /app/data /mnt/dnsdata && \
+    chmod 755 /mnt/dnsdata
 
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:8080
