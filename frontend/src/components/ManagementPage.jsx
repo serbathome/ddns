@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { config } from '../config';
 import {
   Card,
   CardContent,
@@ -113,7 +114,7 @@ const ManagementPage = ({ userEmail, token, onLogout }) => {
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <DashboardIcon sx={{ fontSize: { xs: 32, sm: 40 }, mr: 2, color: 'primary.main' }} />
             <Typography variant="h4" component="h2" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-              Management Dashboard
+              DynDNS Dashboard
             </Typography>
           </Box>
           <Button
@@ -192,12 +193,12 @@ const ManagementPage = ({ userEmail, token, onLogout }) => {
               <TableBody>
                 {records.map((record) => (
                   <TableRow key={record.id}>
-                    <TableCell>{record.hostname}</TableCell>
+                    <TableCell>{record.hostname}.{config.domainName}</TableCell>
                     <TableCell>{record.ipAddress}</TableCell>
                     <TableCell>
                       <Chip
                         label={record.status}
-                        color={record.status === 'active' ? 'success' : 'default'}
+                        color={(record.status === 'active' || record.status === 'refreshed') ? 'success' : 'default'}
                         size="small"
                       />
                     </TableCell>

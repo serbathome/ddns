@@ -49,8 +49,9 @@ app.UseCors("AllowFrontend");
 
 app.UseHttpsRedirection();
 
-app.MapGet("/health", () => Results.Ok())
-    .WithName("Health");
+// Health check endpoint
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+    .WithName("HealthCheck");
 
 app.MapPost("/api/user", async (CreateUserRequest request, AppDbContext db) =>
 {
@@ -139,7 +140,7 @@ app.MapGet("/api/dns", async (string token, AppDbContext db) =>
 
     // Get all records for the token
     var records = await db.Records
-        .Where(r => r.Token == token)
+        .Where(r => r.Token == token && r.Status != "inactive")
         .Select(r => new
         {
             r.Id,
@@ -171,7 +172,9 @@ app.MapDelete("/api/dns/{id}", async (int id, string token, AppDbContext db) =>
         return Results.NotFound();
     }
 
-    db.Records.Remove(record);
+    // Soft delete: mark as inactive instead of removing
+    record.Status = "inactive";
+    record.LastUpdatedAt = DateTime.UtcNow;
     await db.SaveChangesAsync();
 
     return Results.Ok();

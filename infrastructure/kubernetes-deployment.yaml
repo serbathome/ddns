@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ddns-backend
+  labels:
+    app: ddns-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ddns-backend
+  template:
+    metadata:
+      labels:
+        app: ddns-backend
+    spec:
+      containers:
+      - name: backend
+        image: your-registry/ddns-backend:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: AzureDns__ZoneName
+          value: "example.com"
+        - name: AzureDns__ResourceGroupName
+          value: "your-resource-group"
+        - name: AzureDns__SubscriptionId
+          value: "your-subscription-id"
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: ddns-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ddns-backend
+spec:
+  selector:
+    app: ddns-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ddns-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
