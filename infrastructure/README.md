@@ -1,28 +1,52 @@
-# Azure Container Apps Deployment
+# Deployment Guide
 
-This directory contains deployment configurations for Azure Container Apps.
+This directory contains deployment configurations for Azure Container Apps and Kubernetes.
 
 ## Prerequisites
 
 1. Azure CLI installed and logged in
-2. Docker image built and pushed to a container registry
-3. Azure Container Apps environment created
+2. Azure Container Registry (ACR) or other container registry
+3. Azure Container Apps environment or Kubernetes cluster
 
-## Build and Push Docker Image
+## CI/CD with GitHub Actions
 
+The project includes automated build workflows that trigger on changes to frontend or backend folders:
+
+- `.github/workflows/build-backend.yml` - Builds and pushes backend image to ACR
+- `.github/workflows/build-frontend.yml` - Builds and pushes frontend image to ACR
+
+**Required GitHub Configuration:**
+
+Repository Variables:
+- `ACR_SERVER` - Your ACR server (e.g., `myregistry.azurecr.io`)
+- `ACR_LOGIN` - ACR username
+
+Repository Secrets:
+- `ACR_PASSWORD` - ACR password
+
+Images are tagged with semantic version + build number (e.g., `1.0.0-123`) and also pushed as `latest`.
+
+## Manual Build and Push
+
+### Backend
 ```bash
-# Build the image
 cd backend
-docker build -t your-registry.azurecr.io/ddns-backend:latest .
+docker build -t your-registry.azurecr.io/ddns-backend:1.0.0 .
+docker push your-registry.azurecr.io/ddns-backend:1.0.0
+```
 
-# Login to Azure Container Registry
-az acr login --name your-registry
-
-# Push the image
-docker push your-registry.azurecr.io/ddns-backend:latest
+### Frontend
+```bash
+cd frontend
+docker build -t your-registry.azurecr.io/ddns-frontend:1.0.0 \
+  --build-arg VITE_DOMAIN_NAME=your-domain.com \
+  --build-arg VITE_API_URL=https://api.your-domain.com .
+docker push your-registry.azurecr.io/ddns-frontend:1.0.0
 ```
 
 ## Deploy to Azure Container Apps
+
+### Backend Deployment
 
 ```bash
 # Create resource group
@@ -34,7 +58,7 @@ az containerapp env create \
   --resource-group ddns-rg \
   --location eastus
 
-# Create container app with managed identity
+# Create backend container app with managed identity
 az containerapp create \
   --name ddns-backend \
   --resource-group ddns-rg \
@@ -51,8 +75,10 @@ az containerapp create \
   --env-vars \
     ASPNETCORE_ENVIRONMENT=Production \
     AzureDns__ZoneName=example.com \
-    AzureDns__ResourceGroupName=your-resource-group \
+    AzureDns__ResourceGroupName=your-dns-rg \
     AzureDns__SubscriptionId=your-subscription-id \
+    RecordTTL=3600 \
+    Cors__AllowedOrigins=https://your-frontend-url.azurecontainerapps.io \
   --system-assigned
 
 # Get the container app's managed identity
@@ -65,21 +91,43 @@ IDENTITY_ID=$(az containerapp show \
 az role assignment create \
   --assignee $IDENTITY_ID \
   --role "DNS Zone Contributor" \
-  --scope /subscriptions/your-subscription-id/resourceGroups/your-resource-group/providers/Microsoft.Network/dnszones/example.com
-```
-
-## Update Deployment
-
+  --scope /subscriptions/your-subscription-id/resourceGroups/your-dns-rg/providers/Microsoft.Network/dnszones/example.com
+### Backend Update
 ```bash
-# Update with new image
 az containerapp update \
   --name ddns-backend \
   --resource-group ddns-rg \
-  --image your-registry.azurecr.io/ddns-backend:latest
+  --image your-registry.azurecr.io/ddns-backend:1.0.0-123
 ```
 
-## View Logs
+### Frontend Update
+```bash
+az containerapp update \
+  --name ddns-frontend \
+  --resource-group ddns-rg \
+  --image your-registry.azurecr.io/ddns-frontend:1.0.0-123
+```
 
+### Update CORS Configuration
+```bash
+az containerapp update \
+  --name ddns-backend \
+  --resource-group ddns-rg \
+  --set-env-vars Cors__AllowedOrigins=https://new-frontend-url.com
+az containerapp create \
+  --name ddns-frontend \
+  --resource-group ddns-rg \
+  --environment ddns-env \
+  --image your-registry.azurecr.io/ddns-frontend:latest \
+  --target-port 80 \
+  --ingress external \
+  --min-replicas 1 \
+  --max-replicas 2 \
+  --cpu 0.25 \
+  --memory 0.5Gi \
+  --registry-server your-registry.azurecr.io \
+  --registry-identity system
+### Backend Logs
 ```bash
 az containerapp logs show \
   --name ddns-backend \
@@ -87,16 +135,78 @@ az containerapp logs show \
   --follow
 ```
 
+### Frontend Logs
+```bash
+az containerapp logs show \
+  --name ddns-frontend \
+  --resource-group ddns-rg \
+  --follow
+```
+
+## Configuration Reference
+
+### Backend Environment Variables
+
+Required:
+- `AzureDns__ZoneName` - Your Azure DNS zone name (e.g., `example.com`)
+- `AzureDns__ResourceGroupName` - Resource group containing the DNS zone
+- `AzureDns__SubscriptionId` - Azure subscription ID
+- `Cors__AllowedOrigins` - Allowed frontend origins (comma-separated)
+
+Optional:
+- `ASPNETCORE_ENVIRONMENT` - Environment (Production/Development)
+- `RecordTTL` - Record expiration time in seconds (default: 3600)
+- `ConnectionStrings__DefaultConnection` - Database connection string (default: `Data Source=/app/data/app.db`)
+
+### Frontend Build Arguments
+
+Required at build time:
+- `VITE_DOMAIN_NAME` - Your domain name (e.g., `example.com`)
+- `VITE_API_URL` - Backend API URL (e.g., `https://api.example.com`)
+
 ## Important Notes
 
-1. **Persistent Storage**: SQLite database is stored in-memory by default in ACA. For production, consider:
-   - Using Azure SQL Database or PostgreSQL instead
-   - Mounting Azure Files for persistent SQLite storage
-   
-2. **Managed Identity**: The app uses system-assigned managed identity for Azure DNS authentication. Ensure the identity has "DNS Zone Contributor" role on your DNS zone.
+### 1. Persistent Storage
+SQLite database requires persistent storage in production:
+- **Azure Container Apps**: Mount Azure Files or use Azure SQL Database
+- **Kubernetes**: Use PersistentVolumeClaim (included in `kubernetes-deployment.yaml`)
 
-3. **CORS**: Update backend CORS configuration to include your Container App URL:
-   ```csharp
+### 2. Managed Identity
+Backend uses Azure Managed Identity for DNS authentication:
+- System-assigned identity is automatically created
+- Must grant "DNS Zone Contributor" role to the identity
+- No credentials needed in configuration
+
+### 3. CORS Configuration
+Backend CORS is configured via `Cors__AllowedOrigins` environment variable:
+- Supports multiple origins (comma-separated)
+- Must match frontend URL exactly (including protocol and subdomain)
+- Example: `https://www.example.com,https://example.com`
+
+### 4. Frontend Configuration
+Frontend config is baked into the build:
+- `VITE_DOMAIN_NAME` and `VITE_API_URL` must be set at build time
+- Rebuilding required for config changes
+- Consider using different images for different environments
+
+### 5. Version Management
+- Backend version in `backend/backend.csproj` (`<Version>1.0.0</Version>`)
+- Frontend version in `frontend/package.json` (`"version": "1.0.0"`)
+- GitHub Actions automatically tags images as `{version}-{run_number}`
+
+## Kubernetes Deployment
+
+For Kubernetes deployment, see `kubernetes-deployment.yaml` which includes:
+- Backend deployment with persistent volume for SQLite
+- Frontend deployment serving static files via nginx
+- Services with LoadBalancer/ClusterIP
+- Health checks and resource limits
+- ConfigMaps for environment-specific configuration
+
+Apply manifests:
+```bash
+kubectl apply -f kubernetes-deployment.yaml
+```
    builder.Services.AddCors(options => {
        options.AddDefaultPolicy(policy => {
            policy.WithOrigins("https://your-frontend-url.azurecontainerapps.io")
