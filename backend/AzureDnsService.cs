@@ -48,18 +48,11 @@ public class AzureDnsService
                 "Creating/updating DNS A record: {Hostname} -> {IpAddress}", 
                 hostname, ipAddress);
 
-            // Get subscription
-            var subscription = await _armClient.GetSubscriptionResource(
-                new ResourceIdentifier($"/subscriptions/{_subscriptionId}")
-            ).GetAsync();
-
-            // Get resource group
-            var resourceGroup = await subscription.Value.GetResourceGroups()
-                .GetAsync(_resourceGroupName);
-
-            // Get DNS zone
-            var dnsZone = await resourceGroup.Value.GetDnsZones()
-                .GetAsync(_zoneName);
+            // Access DNS zone directly using resource ID (doesn't require resource group read permission)
+            var dnsZoneResourceId = new ResourceIdentifier(
+                $"/subscriptions/{_subscriptionId}/resourceGroups/{_resourceGroupName}/providers/Microsoft.Network/dnszones/{_zoneName}"
+            );
+            var dnsZone = _armClient.GetDnsZoneResource(dnsZoneResourceId);
 
             // Create or update A record
             var aRecordData = new DnsARecordData
@@ -71,7 +64,7 @@ public class AzureDnsService
                 IPv4Address = System.Net.IPAddress.Parse(ipAddress)
             });
 
-            var aRecordCollection = dnsZone.Value.GetDnsARecords();
+            var aRecordCollection = dnsZone.GetDnsARecords();
             await aRecordCollection.CreateOrUpdateAsync(
                 Azure.WaitUntil.Completed,
                 hostname,
@@ -102,21 +95,14 @@ public class AzureDnsService
         {
             _logger.LogInformation("Deleting DNS A record: {Hostname}", hostname);
 
-            // Get subscription
-            var subscription = await _armClient.GetSubscriptionResource(
-                new ResourceIdentifier($"/subscriptions/{_subscriptionId}")
-            ).GetAsync();
-
-            // Get resource group
-            var resourceGroup = await subscription.Value.GetResourceGroups()
-                .GetAsync(_resourceGroupName);
-
-            // Get DNS zone
-            var dnsZone = await resourceGroup.Value.GetDnsZones()
-                .GetAsync(_zoneName);
+            // Access DNS zone directly using resource ID (doesn't require resource group read permission)
+            var dnsZoneResourceId = new ResourceIdentifier(
+                $"/subscriptions/{_subscriptionId}/resourceGroups/{_resourceGroupName}/providers/Microsoft.Network/dnszones/{_zoneName}"
+            );
+            var dnsZone = _armClient.GetDnsZoneResource(dnsZoneResourceId);
 
             // Delete A record
-            var aRecordCollection = dnsZone.Value.GetDnsARecords();
+            var aRecordCollection = dnsZone.GetDnsARecords();
             var aRecord = await aRecordCollection.GetAsync(hostname);
             
             if (aRecord?.Value != null)
