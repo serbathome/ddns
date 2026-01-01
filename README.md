@@ -108,7 +108,7 @@ The backend starts at `http://localhost:5000`
 - `POST /api/dns` - Create DNS record (requires Authorization header)
 - `PATCH /api/dns/{id}` - Update DNS record (requires Authorization header)
 - `DELETE /api/dns/{id}` - Delete DNS record (requires Authorization header)
-- `POST /api/dns/refresh` - Refresh record timestamp (requires Authorization header)
+- `POST /api/dns/refresh` - Refresh record timestamp (accepts Authorization header OR body token)
 - `GET /scalar/v1` - API documentation (development only)
 
 #### Frontend

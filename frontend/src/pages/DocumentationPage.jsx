@@ -213,7 +213,7 @@ export default function DocumentationPage() {
               </Paper>
 
               <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
-                Refresh Record Timestamp:
+                Refresh Record Timestamp (Authorization Header):
               </Typography>
               <Paper sx={{ p: 2, bgcolor: '#f5f5f5', fontFamily: 'monospace', fontSize: '0.9rem' }}>
                 curl -X POST https://your-api.com/api/dns/refresh \<br/>
@@ -222,8 +222,17 @@ export default function DocumentationPage() {
                 &nbsp;&nbsp;-d '&#123;"hostname":"myserver","ipAddress":"1.2.3.4"&#125;'
               </Paper>
 
+              <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+                Refresh Record Timestamp (Token in Body):
+              </Typography>
+              <Paper sx={{ p: 2, bgcolor: '#f5f5f5', fontFamily: 'monospace', fontSize: '0.9rem', mb: 2 }}>
+                curl -X POST https://your-api.com/api/dns/refresh \<br/>
+                &nbsp;&nbsp;-H "Content-Type: application/json" \<br/>
+                &nbsp;&nbsp;-d '&#123;"hostname":"myserver","ipAddress":"1.2.3.4","token":"YOUR_TOKEN"&#125;'
+              </Paper>
+
               <Typography variant="body2" sx={{ mt: 2 }}>
-                Replace <code>YOUR_TOKEN</code> with your authentication token from the dashboard.
+                Replace <code>YOUR_TOKEN</code> with your authentication token from the dashboard. The Authorization header method is recommended for better security.
               </Typography>
             </CardContent>
           </Card>

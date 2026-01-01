@@ -270,8 +270,13 @@ app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, Htt
 
 app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, HttpContext context, AppDbContext db) =>
 {
-    // Extract and validate token from Authorization header
+    // Extract token from Authorization header first, fallback to request body
     var token = ExtractTokenFromHeader(context);
+    if (string.IsNullOrEmpty(token))
+    {
+        token = request.Token;
+    }
+    
     if (string.IsNullOrEmpty(token))
     {
         return Results.StatusCode(403);
@@ -304,4 +309,4 @@ record CreateUserRequest(string Email);
 record LoginRequest(string Email, string Token);
 record DnsRecordRequest(string IpAddress, string Hostname);
 record UpdateDnsRecordRequest(string? IpAddress, string? Hostname);
-record RefreshDnsRecordRequest(string IpAddress, string Hostname);
+record RefreshDnsRecordRequest(string IpAddress, string Hostname, string? Token = null);
