@@ -1,4 +1,4 @@
 export const config = {
-  domainName: 'my-cloud-lab.com',
-  apiUrl: 'http://localhost:5000'
+  domainName: import.meta.env.VITE_DOMAIN_NAME || 'my-cloud-lab.com',
+  apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:5000'
 };
