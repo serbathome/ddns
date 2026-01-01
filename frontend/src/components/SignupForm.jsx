@@ -28,7 +28,7 @@ const SignupForm = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/user', {
+      const response = await fetch(`${config.apiUrl}/api/user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

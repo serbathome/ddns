@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { config } from '../config';
 import { getAuthHeaders } from '../utils/api';
 import {
   Card,
@@ -27,7 +28,7 @@ const EditDnsRecordPage = ({ token }) => {
   useEffect(() => {
     const fetchRecord = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/dns', {
+        const response = await fetch(`${config.apiUrl}/api/dns`, {
           headers: getAuthHeaders(token)
         });
         
@@ -63,7 +64,7 @@ const EditDnsRecordPage = ({ token }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/dns/${id}`, {
+      const response = await fetch(`${config.apiUrl}/api/dns/${id}`, {
         method: 'PATCH',
         headers: getAuthHeaders(token),
         body: JSON.stringify({ hostname, ipAddress }),
