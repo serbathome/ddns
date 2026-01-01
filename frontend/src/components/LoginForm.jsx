@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { config } from '../config';
 import {
   Card,
   CardContent,
@@ -22,23 +23,51 @@ const LoginForm = ({ onLoginSuccess }) => {
     setError('');
     setLoading(true);
 
+    const requestUrl = `${config.apiUrl}/api/login`;
+    const requestBody = { email, token };
+    
+    console.log('[LOGIN] Starting request:', {
+      url: requestUrl,
+      method: 'POST',
+      body: requestBody,
+      timestamp: new Date().toISOString()
+    });
+
     try {
-      const response = await fetch(`${config.apiUrl}/api/login`, {
+      const response = await fetch(requestUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, token }),
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('[LOGIN] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+        timestamp: new Date().toISOString()
       });
 
       if (response.ok) {
+        console.log('[LOGIN] Login successful');
         onLoginSuccess(email, token);
       } else if (response.status === 403) {
+        console.warn('[LOGIN] Authentication failed (403)');
         setError('Invalid email or token. Please try again.');
       } else {
+        console.error('[LOGIN] Login failed with status:', response.status);
         setError('Login failed. Please try again.');
       }
     } catch (err) {
+      console.error('[LOGIN] Network error:', {
+        error: err,
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        timestamp: new Date().toISOString()
+      });
       setError('Network error. Please check if the backend is running.');
     } finally {
       setLoading(false);

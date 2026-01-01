@@ -42,20 +42,48 @@ const ManagementPage = ({ userEmail, token, onLogout }) => {
   const [deleting, setDeleting] = useState(false);
 
   const fetchRecords = async () => {
+    const requestUrl = `${config.apiUrl}/api/dns`;
+    const headers = getAuthHeaders(token);
+    
+    console.log('[FETCH_RECORDS] Starting request:', {
+      url: requestUrl,
+      method: 'GET',
+      headers: headers,
+      timestamp: new Date().toISOString()
+    });
+
     try {
-      const response = await fetch(`${config.apiUrl}/api/dns`, {
-        headers: getAuthHeaders(token)
+      const response = await fetch(requestUrl, {
+        headers: headers
       });
       
+      console.log('[FETCH_RECORDS] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+        timestamp: new Date().toISOString()
+      });
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[FETCH_RECORDS] Records loaded successfully:', data.length, 'records');
         setRecords(data);
       } else if (response.status === 403) {
+        console.warn('[FETCH_RECORDS] Invalid token (403)');
         setError('Invalid token. Please log in again.');
       } else {
+        console.error('[FETCH_RECORDS] Failed with status:', response.status);
         setError('Failed to load DNS records.');
       }
     } catch (err) {
+      console.error('[FETCH_RECORDS] Network error:', {
+        error: err,
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        timestamp: new Date().toISOString()
+      });
       setError('Network error. Please check if the backend is running.');
     } finally {
       setLoading(false);

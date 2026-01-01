@@ -27,27 +27,57 @@ const EditDnsRecordPage = ({ token }) => {
 
   useEffect(() => {
     const fetchRecord = async () => {
+      const requestUrl = `${config.apiUrl}/api/dns`;
+      const headers = getAuthHeaders(token);
+      
+      console.log('[EDIT_FETCH_RECORD] Starting request:', {
+        url: requestUrl,
+        method: 'GET',
+        recordId: id,
+        headers: headers,
+        timestamp: new Date().toISOString()
+      });
+
       try {
-        const response = await fetch(`${config.apiUrl}/api/dns`, {
-          headers: getAuthHeaders(token)
+        const response = await fetch(requestUrl, {
+          headers: headers
         });
         
+        console.log('[EDIT_FETCH_RECORD] Response received:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries()),
+          timestamp: new Date().toISOString()
+        });
+
         if (response.ok) {
           const data = await response.json();
           const record = data.find(r => r.id === parseInt(id));
           
           if (record) {
+            console.log('[EDIT_FETCH_RECORD] Record found:', record);
             setHostname(record.hostname);
             setIpAddress(record.ipAddress);
           } else {
+            console.warn('[EDIT_FETCH_RECORD] Record not found in response data');
             setError('Record not found');
           }
         } else if (response.status === 403) {
+          console.warn('[EDIT_FETCH_RECORD] Invalid token (403)');
           setError('Invalid token. Please log in again.');
         } else {
+          console.error('[EDIT_FETCH_RECORD] Failed with status:', response.status);
           setError('Failed to load DNS record.');
         }
       } catch (err) {
+        console.error('[EDIT_FETCH_RECORD] Network error:', {
+          error: err,
+          message: err.message,
+          name: err.name,
+          stack: err.stack,
+          timestamp: new Date().toISOString()
+        });
         setError('Network error. Please check if the backend is running.');
       } finally {
         setFetchingRecord(false);
@@ -63,28 +93,61 @@ const EditDnsRecordPage = ({ token }) => {
     setSuccess(false);
     setLoading(true);
 
+    const requestUrl = `${config.apiUrl}/api/dns/${id}`;
+    const requestBody = { hostname, ipAddress };
+    const headers = getAuthHeaders(token);
+    
+    console.log('[UPDATE_RECORD] Starting request:', {
+      url: requestUrl,
+      method: 'PATCH',
+      recordId: id,
+      body: requestBody,
+      headers: headers,
+      timestamp: new Date().toISOString()
+    });
+
     try {
-      const response = await fetch(`${config.apiUrl}/api/dns/${id}`, {
+      const response = await fetch(requestUrl, {
         method: 'PATCH',
-        headers: getAuthHeaders(token),
-        body: JSON.stringify({ hostname, ipAddress }),
+        headers: headers,
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('[UPDATE_RECORD] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+        timestamp: new Date().toISOString()
       });
 
       if (response.ok) {
+        console.log('[UPDATE_RECORD] Record updated successfully');
         setSuccess(true);
         setTimeout(() => {
           navigate('/dashboard');
         }, 1500);
       } else if (response.status === 404) {
+        console.warn('[UPDATE_RECORD] Record not found (404)');
         setError('DNS record not found');
       } else if (response.status === 403) {
+        console.warn('[UPDATE_RECORD] Invalid token (403)');
         setError('Invalid token. Please log in again.');
       } else if (response.status === 500) {
+        console.warn('[UPDATE_RECORD] Hostname already exists');
         setError('Hostname already exists. Please choose a different hostname.');
       } else {
+        console.error('[UPDATE_RECORD] Failed with status:', response.status);
         setError('Failed to update DNS record. Please try again.');
       }
     } catch (err) {
+      console.error('[UPDATE_RECORD] Network error:', {
+        error: err,
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        timestamp: new Date().toISOString()
+      });
       setError('Network error. Please check if the backend is running.');
     } finally {
       setLoading(false);

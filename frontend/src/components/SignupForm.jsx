@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { config } from '../config';
 import {
   Card,
   CardContent,
@@ -27,25 +28,53 @@ const SignupForm = () => {
     setToken('');
     setLoading(true);
 
+    const requestUrl = `${config.apiUrl}/api/user`;
+    const requestBody = { email };
+    
+    console.log('[SIGNUP] Starting request:', {
+      url: requestUrl,
+      method: 'POST',
+      body: requestBody,
+      timestamp: new Date().toISOString()
+    });
+
     try {
-      const response = await fetch(`${config.apiUrl}/api/user`, {
+      const response = await fetch(requestUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('[SIGNUP] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+        timestamp: new Date().toISOString()
       });
 
       if (response.ok) {
         const data = await response.json();
+        console.log('[SIGNUP] Signup successful, token received');
         setToken(data.token);
         setEmail('');
       } else if (response.status === 500) {
+        console.warn('[SIGNUP] User already exists');
         setError('User with this email already exists');
       } else {
+        console.error('[SIGNUP] Signup failed with status:', response.status);
         setError('Failed to create user. Please try again.');
       }
     } catch (err) {
+      console.error('[SIGNUP] Network error:', {
+        error: err,
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        timestamp: new Date().toISOString()
+      });
       setError('Network error. Please check if the backend is running.');
     } finally {
       setLoading(false);

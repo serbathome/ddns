@@ -29,14 +29,35 @@ const AddDnsRecordPage = ({ token }) => {
     setSuccess(false);
     setLoading(true);
 
+    const requestUrl = `${config.apiUrl}/api/dns`;
+    const requestBody = { hostname, ipAddress };
+    const headers = getAuthHeaders(token);
+    
+    console.log('[ADD_RECORD] Starting request:', {
+      url: requestUrl,
+      method: 'POST',
+      body: requestBody,
+      headers: headers,
+      timestamp: new Date().toISOString()
+    });
+
     try {
-      const response = await fetch(`${config.apiUrl}/api/dns`, {
+      const response = await fetch(requestUrl, {
         method: 'POST',
-        headers: getAuthHeaders(token),
-        body: JSON.stringify({ hostname, ipAddress }),
+        headers: headers,
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('[ADD_RECORD] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+        timestamp: new Date().toISOString()
       });
 
       if (response.ok) {
+        console.log('[ADD_RECORD] Record added successfully');
         setSuccess(true);
         setHostname('');
         setIpAddress('');
@@ -44,13 +65,23 @@ const AddDnsRecordPage = ({ token }) => {
           navigate('/dashboard');
         }, 1500);
       } else if (response.status === 500) {
+        console.warn('[ADD_RECORD] Hostname already exists');
         setError('DNS record with this hostname already exists for your account');
       } else if (response.status === 403) {
+        console.warn('[ADD_RECORD] Invalid token (403)');
         setError('Invalid token. Please log in again.');
       } else {
+        console.error('[ADD_RECORD] Failed with status:', response.status);
         setError('Failed to add DNS record. Please try again.');
       }
     } catch (err) {
+      console.error('[ADD_RECORD] Network error:', {
+        error: err,
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        timestamp: new Date().toISOString()
+      });
       setError('Network error. Please check if the backend is running.');
     } finally {
       setLoading(false);

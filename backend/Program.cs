@@ -50,7 +50,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 // Helper method to extract token from Authorization header
 static string? ExtractTokenFromHeader(HttpContext context)
