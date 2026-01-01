@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../config';
+import { getAuthHeaders } from '../utils/api';
 import {
   Card,
   CardContent,
@@ -41,7 +42,9 @@ const ManagementPage = ({ userEmail, token, onLogout }) => {
 
   const fetchRecords = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/dns?token=${token}`);
+      const response = await fetch('http://localhost:5000/api/dns', {
+        headers: getAuthHeaders(token)
+      });
       
       if (response.ok) {
         const data = await response.json();
@@ -72,8 +75,9 @@ const ManagementPage = ({ userEmail, token, onLogout }) => {
 
     setDeleting(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/dns/${recordToDelete.id}?token=${token}`, {
+      const response = await fetch(`http://localhost:5000/api/dns/${recordToDelete.id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(token)
       });
 
       if (response.ok) {

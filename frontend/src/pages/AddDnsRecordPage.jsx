@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getAuthHeaders } from '../utils/api';
 import {
   Card,
   CardContent,
@@ -30,10 +31,8 @@ const AddDnsRecordPage = ({ token }) => {
     try {
       const response = await fetch('http://localhost:5000/api/dns', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token, hostname, ipAddress }),
+        headers: getAuthHeaders(token),
+        body: JSON.stringify({ hostname, ipAddress }),
       });
 
       if (response.ok) {

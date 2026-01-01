@@ -49,6 +49,20 @@ app.UseCors("AllowFrontend");
 
 app.UseHttpsRedirection();
 
+// Helper method to extract token from Authorization header
+static string? ExtractTokenFromHeader(HttpContext context)
+{
+    var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader))
+        return null;
+    
+    // Expected format: "Bearer {token}"
+    if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        return authHeader.Substring(7);
+    
+    return null;
+}
+
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck");
@@ -93,10 +107,16 @@ app.MapPost("/api/login", async (LoginRequest request, AppDbContext db) =>
 })
 .WithName("Login");
 
-app.MapPost("/api/dns", async (DnsRecordRequest request, AppDbContext db) =>
+app.MapPost("/api/dns", async (DnsRecordRequest request, HttpContext context, AppDbContext db) =>
 {
-    // Validate token exists
-    var user = await db.Users.FirstOrDefaultAsync(u => u.Token == request.Token);
+    // Extract and validate token from Authorization header
+    var token = ExtractTokenFromHeader(context);
+    if (string.IsNullOrEmpty(token))
+    {
+        return Results.StatusCode(403);
+    }
+
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Token == token);
     if (user == null)
     {
         return Results.StatusCode(403);
@@ -104,7 +124,7 @@ app.MapPost("/api/dns", async (DnsRecordRequest request, AppDbContext db) =>
 
     // Check if record already exists
     var existingRecord = await db.Records.FirstOrDefaultAsync(r => 
-        //r.Token == request.Token && 
+        //r.Token == token && 
         r.Hostname == request.Hostname);
     
     if (existingRecord != null)
@@ -115,7 +135,7 @@ app.MapPost("/api/dns", async (DnsRecordRequest request, AppDbContext db) =>
     // Add new record with status "added"
     var record = new Record
     {
-        Token = request.Token,
+        Token = token,
         IpAddress = request.IpAddress,
         Hostname = request.Hostname,
         Status = "added",
@@ -129,9 +149,15 @@ app.MapPost("/api/dns", async (DnsRecordRequest request, AppDbContext db) =>
 })
 .WithName("AddDnsRecord");
 
-app.MapGet("/api/dns", async (string token, AppDbContext db) =>
+app.MapGet("/api/dns", async (HttpContext context, AppDbContext db) =>
 {
-    // Validate token exists
+    // Extract and validate token from Authorization header
+    var token = ExtractTokenFromHeader(context);
+    if (string.IsNullOrEmpty(token))
+    {
+        return Results.StatusCode(403);
+    }
+
     var user = await db.Users.FirstOrDefaultAsync(u => u.Token == token);
     if (user == null)
     {
@@ -155,9 +181,15 @@ app.MapGet("/api/dns", async (string token, AppDbContext db) =>
 })
 .WithName("GetDnsRecords");
 
-app.MapDelete("/api/dns/{id}", async (int id, string token, AppDbContext db) =>
+app.MapDelete("/api/dns/{id}", async (int id, HttpContext context, AppDbContext db) =>
 {
-    // Validate token exists
+    // Extract and validate token from Authorization header
+    var token = ExtractTokenFromHeader(context);
+    if (string.IsNullOrEmpty(token))
+    {
+        return Results.StatusCode(403);
+    }
+
     var user = await db.Users.FirstOrDefaultAsync(u => u.Token == token);
     if (user == null)
     {
@@ -181,17 +213,23 @@ app.MapDelete("/api/dns/{id}", async (int id, string token, AppDbContext db) =>
 })
 .WithName("DeleteDnsRecord");
 
-app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, AppDbContext db) =>
+app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, HttpContext context, AppDbContext db) =>
 {
-    // Validate token exists
-    var user = await db.Users.FirstOrDefaultAsync(u => u.Token == request.Token);
+    // Extract and validate token from Authorization header
+    var token = ExtractTokenFromHeader(context);
+    if (string.IsNullOrEmpty(token))
+    {
+        return Results.StatusCode(403);
+    }
+
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Token == token);
     if (user == null)
     {
         return Results.StatusCode(403);
     }
 
     // Find the record by ID and ensure it belongs to this user
-    var record = await db.Records.FirstOrDefaultAsync(r => r.Id == id && r.Token == request.Token);
+    var record = await db.Records.FirstOrDefaultAsync(r => r.Id == id && r.Token == token);
     
     if (record == null)
     {
@@ -230,11 +268,18 @@ app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, App
 })
 .WithName("UpdateDnsRecord");
 
-app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, AppDbContext db) =>
+app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, HttpContext context, AppDbContext db) =>
 {
+    // Extract and validate token from Authorization header
+    var token = ExtractTokenFromHeader(context);
+    if (string.IsNullOrEmpty(token))
+    {
+        return Results.StatusCode(403);
+    }
+
     // Find the record with matching token, IP address, hostname, and status="active"
     var record = await db.Records.FirstOrDefaultAsync(r => 
-        r.Token == request.Token && 
+        r.Token == token && 
         r.IpAddress == request.IpAddress && 
         r.Hostname == request.Hostname && 
         r.Status == "active");
@@ -257,6 +302,6 @@ app.Run();
 
 record CreateUserRequest(string Email);
 record LoginRequest(string Email, string Token);
-record DnsRecordRequest(string Token, string IpAddress, string Hostname);
-record UpdateDnsRecordRequest(string Token, string? IpAddress, string? Hostname);
-record RefreshDnsRecordRequest(string Token, string IpAddress, string Hostname);
+record DnsRecordRequest(string IpAddress, string Hostname);
+record UpdateDnsRecordRequest(string? IpAddress, string? Hostname);
+record RefreshDnsRecordRequest(string IpAddress, string Hostname);
