@@ -146,7 +146,7 @@ const ManagementPage = ({ userEmail, token, onLogout }) => {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>            <DashboardIcon sx={{ fontSize: { xs: 32, sm: 40 }, mr: 2, color: 'primary.main' }} />
             <Typography variant="h4" component="h2" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-              DynDNS Dashboard
+              DynDNS Dashboard for {config.domainName}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -228,7 +228,7 @@ const ManagementPage = ({ userEmail, token, onLogout }) => {
                   <TableCell><strong>Hostname</strong></TableCell>
                   <TableCell><strong>IP Address</strong></TableCell>
                   <TableCell><strong>Status</strong></TableCell>
-                  <TableCell><strong>Last Updated</strong></TableCell>
+                  <TableCell><strong>Last Updated (UTC)</strong></TableCell>
                   <TableCell align="right"><strong>Actions</strong></TableCell>
                 </TableRow>
               </TableHead>
