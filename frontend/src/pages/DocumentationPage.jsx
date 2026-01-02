@@ -180,7 +180,7 @@ export default function DocumentationPage() {
               </Typography>
               <Typography variant="body1" paragraph>
                 Records need to be refreshed periodically to remain active. To keep your DNS record active, 
-                use the <strong>Refresh</strong> button in the dashboard or the refresh API endpoint.
+                use the refresh API endpoint as described below.
               </Typography>
               <Typography variant="body2" paragraph>
                 <strong>Default TTL:</strong> 1 hour (3600 seconds)
@@ -242,8 +242,8 @@ export default function DocumentationPage() {
                 </ListItem>
                 <ListItem>
                   <ListItemText 
-                    primary="Use refresh to keep records active"
-                    secondary="Click the Refresh button in the dashboard or use the refresh API endpoint regularly to keep your DNS records active"
+                    primary="Use refresh API to keep records active"
+                    secondary="Call the refresh API endpoint regularly to keep your DNS records active"
                   />
                 </ListItem>
                 <ListItem>
