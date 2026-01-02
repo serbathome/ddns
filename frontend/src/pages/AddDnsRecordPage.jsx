@@ -134,8 +134,8 @@ const AddDnsRecordPage = ({ token }) => {
                 required
                 margin="normal"
                 variant="outlined"
-                placeholder="example.com"
-                helperText="Enter the hostname (FQDN)"
+                placeholder="example"
+                helperText="Enter the hostname without domain name"
               />
 
               <TextField
@@ -147,7 +147,7 @@ const AddDnsRecordPage = ({ token }) => {
                 required
                 margin="normal"
                 variant="outlined"
-                placeholder="192.168.1.1"
+                placeholder="1.2.3.4"
                 helperText="Enter the IP address"
               />
 
