@@ -348,12 +348,12 @@ app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, HttpCont
         return Results.BadRequest(new { error = errorMessage });
     }
 
-    // Find the record with matching token, IP address, hostname, and status="active"
+    // Find the record with matching token, IP address, hostname, and status="active" or "refreshed"
     var record = await db.Records.FirstOrDefaultAsync(r => 
         r.Token == token && 
         r.IpAddress == request.IpAddress && 
         r.Hostname == request.Hostname && 
-        r.Status == "active");
+        (r.Status == "active" || r.Status == "refreshed"));
     
     if (record == null)
     {
