@@ -348,24 +348,40 @@ app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, HttpCont
         return Results.BadRequest(new { error = errorMessage });
     }
 
-    // Find the record with matching token, IP address, hostname, and status="active" or "refreshed"
+    // Step 1: Try exact match (token + hostname + IP + status)
     var record = await db.Records.FirstOrDefaultAsync(r => 
         r.Token == token && 
-        r.IpAddress == request.IpAddress && 
         r.Hostname == request.Hostname && 
-        (r.Status == "active" || r.Status == "refreshed"));
+        r.IpAddress == request.IpAddress && 
+        (r.Status == "active" || r.Status == "refreshed" || r.Status == "updated"));
     
-    if (record == null)
+    if (record != null)
     {
-        return Results.NotFound();
+        // Direct match found - just refresh the timestamp
+        record.Status = "refreshed";
+        record.LastUpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Results.Ok();
     }
 
-    // Update status to "refreshed"
-    record.Status = "refreshed";
-    record.LastUpdatedAt = DateTime.UtcNow;
-    await db.SaveChangesAsync();
+    // Step 2: Try hostname match only (IP may have changed)
+    record = await db.Records.FirstOrDefaultAsync(r => 
+        r.Token == token && 
+        r.Hostname == request.Hostname && 
+        (r.Status == "active" || r.Status == "refreshed" || r.Status == "updated"));
+    
+    if (record != null)
+    {
+        // Hostname match found but IP is different - update IP
+        record.IpAddress = request.IpAddress;
+        record.Status = "updated";
+        record.LastUpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Results.Ok();
+    }
 
-    return Results.Ok();
+    // Step 3: No record found
+    return Results.NotFound();
 })
 .WithName("RefreshDnsRecord");
 
