@@ -12,6 +12,9 @@ on:
       - 'backend/**'
       - '.github/workflows/build-backend.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
