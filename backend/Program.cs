@@ -353,7 +353,7 @@ app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, HttpCont
         r.Token == token && 
         r.Hostname == request.Hostname && 
         r.IpAddress == request.IpAddress && 
-        (r.Status == "active" || r.Status == "refreshed" || r.Status == "updated"));
+        (r.Status == "active" || r.Status == "refreshed"));
     
     if (record != null)
     {
@@ -368,7 +368,7 @@ app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, HttpCont
     record = await db.Records.FirstOrDefaultAsync(r => 
         r.Token == token && 
         r.Hostname == request.Hostname && 
-        (r.Status == "active" || r.Status == "refreshed" || r.Status == "updated"));
+        (r.Status == "active" || r.Status == "refreshed"));
     
     if (record != null)
     {
