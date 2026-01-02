@@ -66,6 +66,48 @@ static string? ExtractTokenFromHeader(HttpContext context)
     return null;
 }
 
+// Helper method to validate hostname according to DNS standards
+static (bool isValid, string? errorMessage) ValidateHostname(string hostname)
+{
+    if (string.IsNullOrWhiteSpace(hostname))
+        return (false, "Hostname cannot be empty");
+
+    // Trim whitespace
+    hostname = hostname.Trim();
+
+    // Check for reserved/forbidden values
+    if (hostname.Equals("api", StringComparison.OrdinalIgnoreCase))
+        return (false, "Hostname 'api' is reserved and cannot be used");
+    
+    if (hostname.Contains("@"))
+        return (false, "Hostname cannot contain '@' symbol (apex records not supported)");
+    
+    if (hostname.Contains("."))
+        return (false, "Hostname cannot contain dots - use only the subdomain name");
+
+    // RFC 1123 compliance: hostname labels
+    // - Must be between 1 and 63 characters
+    // - Can only contain alphanumeric characters and hyphens
+    // - Cannot start or end with a hyphen
+    // - Cannot be all numeric
+    
+    if (hostname.Length < 1 || hostname.Length > 63)
+        return (false, "Hostname must be between 1 and 63 characters");
+
+    if (hostname.StartsWith("-") || hostname.EndsWith("-"))
+        return (false, "Hostname cannot start or end with a hyphen");
+
+    // Check if contains only valid characters (alphanumeric and hyphen)
+    if (!System.Text.RegularExpressions.Regex.IsMatch(hostname, @"^[a-zA-Z0-9-]+$"))
+        return (false, "Hostname can only contain letters, numbers, and hyphens");
+
+    // Check if all numeric (not allowed for hostnames)
+    if (System.Text.RegularExpressions.Regex.IsMatch(hostname, @"^[0-9]+$"))
+        return (false, "Hostname cannot be entirely numeric");
+
+    return (true, null);
+}
+
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck");
@@ -123,6 +165,13 @@ app.MapPost("/api/dns", async (DnsRecordRequest request, HttpContext context, Ap
     if (user == null)
     {
         return Results.StatusCode(403);
+    }
+
+    // Validate hostname
+    var (isValid, errorMessage) = ValidateHostname(request.Hostname);
+    if (!isValid)
+    {
+        return Results.BadRequest(new { error = errorMessage });
     }
 
     // Check if record already exists
@@ -247,6 +296,13 @@ app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, Htt
     
     if (!string.IsNullOrEmpty(request.Hostname))
     {
+        // Validate hostname
+        var (isValid, errorMessage) = ValidateHostname(request.Hostname);
+        if (!isValid)
+        {
+            return Results.BadRequest(new { error = errorMessage });
+        }
+
         // Check if new hostname already exists (excluding current record)
         var existingRecord = await db.Records.FirstOrDefaultAsync(r => 
             r.Hostname == request.Hostname && r.Id != id);
@@ -283,6 +339,13 @@ app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, HttpCont
     if (string.IsNullOrEmpty(token))
     {
         return Results.StatusCode(403);
+    }
+
+    // Validate hostname
+    var (isValid, errorMessage) = ValidateHostname(request.Hostname);
+    if (!isValid)
+    {
+        return Results.BadRequest(new { error = errorMessage });
     }
 
     // Find the record with matching token, IP address, hostname, and status="active"
