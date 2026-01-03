@@ -22,9 +22,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add SQLite database
+// Add Azure SQL database with passwordless authentication
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add Azure DNS service
 builder.Services.AddSingleton<AzureDnsService>();
@@ -34,11 +34,23 @@ builder.Services.AddHostedService<DnsRecordActivationService>();
 
 var app = builder.Build();
 
-// Ensure database is created
+// Initialize database - Apply migrations automatically
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        logger.LogInformation("Applying database migrations...");
+        db.Database.Migrate();
+        logger.LogInformation("Database migrations applied successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while applying migrations");
+        throw;
+    }
 }
 
 // Configure the HTTP request pipeline.

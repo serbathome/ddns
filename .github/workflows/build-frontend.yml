@@ -14,6 +14,7 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/build-frontend.yml'
+  workflow_dispatch:
 
 jobs:
   build:
