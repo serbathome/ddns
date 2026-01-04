@@ -40,15 +40,17 @@ A Dynamic DNS management system with Azure DNS integration, featuring automated 
 - React 18 with Vite
 - Material-UI (MUI)
 - React Router for navigation
-- Modern responsive design with gradient backgrounds
+- Modern responsive design
 - Configurable domain visualization
 
 ### Backend
 - ASP.NET Core 9.0 Minimal APIs
-- Entity Framework Core with SQLite
+- Entity Framework Core with Azure SQL Database
+- Passwordless authentication via Azure Entra ID (Managed Identity)
 - Azure SDK for DNS management (Azure.ResourceManager.Dns)
 - Background services with PeriodicTimer
 - Scalar API documentation (OpenAPI)
+- EF Core Migrations for schema management
 
 ### Infrastructure
 - Docker containerization
@@ -61,16 +63,16 @@ A Dynamic DNS management system with Azure DNS integration, featuring automated 
 ### Prerequisites
 - .NET 9.0 SDK
 - Node.js and npm
-- Azure subscription (for DNS integration)
+- Azure subscription (for DNS and database)
 - Azure DNS zone configured
+- Azure SQL Database configured with Entra ID authentication
+- Azure CLI installed and authenticated (`az login`)
 
 ### Configuration
 
 #### Backend Configuration (`backend/appsettings.json`)
 ```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=app.db"
+{Server=tcp:your-server.database.windows.net,1433;Initial Catalog=your-database;Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
   },
   "RecordTTL": 3600,
   "AzureDns": {
@@ -78,6 +80,10 @@ A Dynamic DNS management system with Azure DNS integration, featuring automated 
     "ResourceGroupName": "your-resource-group",
     "SubscriptionId": "your-subscription-id"
   }
+}
+```
+
+**Note**: The connection string uses passwordless authentication. No credentials are stored in configuration files.
 }
 ```
 
@@ -91,27 +97,97 @@ export const config = {
 
 ### Running Locally
 
-#### Backend
+**First Time Setup:**
+1. Sign in to Azure:
+```bash
+az login
+```
+
+2. Create SQL database user (run in Azure Portal Query Editor on your database):
+```sql
+CREATE USER [your-email@domain.com] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [your-email@domain.com];
+ALTER ROLE db_datawriter ADD MEMBER [your-email@domain.com];
+ALTER ROLE db_ddladmin ADD MEMBER [your-email@domain.com];
+GO
+```
+
+3. Create and apply database migrations:
+```bash
+cd backend
+dotnet restore
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+```
+
+**Run the Application:**
 ```bash
 cd backend
 dotnet restore
 dotnet run
 ```
+The application uses **passwordless authentication** via Azure Entra ID (formerly Azure Active Directory) for both Azure SQL Database and Azure DNS operations using `DefaultAzureCredential`.
 
-The backend starts at `http://localhost:5000`
+**Local Development:**
+```bash
+# Sign in to Azure (uses your credentials for both SQL and DNS)
+az login
 
-**API Endpoints:**
-- `GET /health` - Health check
-- `POST /api/user` - Create user (returns token)
-- `POST /api/login` - Authenticate user
-- `GET /api/dns` - List DNS records (requires Authorization header)
-- `POST /api/dns` - Create DNS record (requires Authorization header)
-- `PATCH /api/dns/{id}` - Update DNS record (requires Authorization header)
+# Verify you're signed in
+az account show
+```
+
+**Azure SQL Database Setup:**
+
+Quick steps:
+1. Create database user for local development (your Azure account)
+2. For production: Enable managed identity and create SQL user for the identity
+3. Grant roles: `db_datareader`, `db_datawriter`, `db_ddladmin`
+
+**Azure DNS Setup:**
+
+Enable system-assigned managed identity and grant DNS Zone Contributor role:
+```bash
+# For Azure Container Apps
+az containerapp identity assign \
+  --name <app-name> \
+  --resource-group <resource-group> \
+  --sConnectionStrings__DefaultConnection="Server=tcp:your-server.database.windows.net,1433;Initial Catalog=your-database;Authentication=Active Directory Default;Encrypt=True;" \
+  -e AzureDns__ZoneName=your-domain.com \
+  -e AzureDns__ResourceGroupName=your-rg \
+  -e AzureDns__SubscriptionId=your-sub-id \
+  ddns-backend:latest
+```
+
+**Note**: When running in Azure (Container Apps, AKS, App Service), managed identity is automatically discovered. No additional environment variables needed for authentication.PATCH /api/dns/{id}` - Update DNS record (requires Authorization header)
 - `DELETE /api/dns/{id}` - Delete DNS record (requires Authorization header)
 - `POST /api/dns/refresh` - Refresh record timestamp (accepts Authorization header OR body token)
 - `GET /scalar/v1` - API documentation (development only)
+System-assigned managed identity configuration
+- Azure SQL Database user creation with Object ID
+- DNS Zone Contributor role assignment
 
-#### Frontend
+**Quick Setup Commands:**
+```bash
+# Enable managed identity
+az containerapp identity assign --name <app> --resource-group <rg> --system-assigned
+
+# Get the principal ID
+PRINCIPAL_ID=$(az containerapp identity show --name <app> --resource-group <rg> --query principalId -o tsv)
+
+# Create SQL user (run in Azure Portal Query Editor)
+CREATE USER [your-app-name] FROM EXTERNAL PROVIDER WITH OBJECT_ID = '<principal-id-guid>';
+ALTER ROLE db_datareader ADD MEMBER [your-app-name];
+ALTER ROLE db_datawriter ADD MEMBER [your-app-name];
+ALTER ROLE db_ddladmin ADD MEMBER [your-app-name];
+GO
+
+# Grant DNS permissions
+az role assignment create \
+  --assignee $PRINCIPAL_ID \
+  --role "DNS Zone Contributor" \
+  --scope /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/dnszones/<zone>
+```
 ```bash
 cd frontend
 npm install
@@ -190,11 +266,16 @@ Delete from Azure DNS → Remove from DB
 
 ### Background Service Tasks
 
-Every 5 minutes:
-1. **Expire stale records**: Mark active/refreshed records as inactive if `LastUpdatedAt` exceeds TTL
-2. **Sync new/updated records**: Create or update A records in Azure DNS
-3. **Handle hostname changes**: Delete old DNS records after new ones are created
-4. **Cleanup inactive records**: Delete from Azure DNS and database
+Ev**Passwordless Authentication**: No credentials in configuration files  
+✅ **Azure Entra ID Integration**: Managed Identity for Azure SQL and DNS  
+✅ **Authorization Bearer Tokens**: Industry-standard API authentication  
+✅ **Token Validation**: All protected endpoints validated  
+✅ **Encrypted Connections**: TLS for Azure SQL Database  
+✅ **Non-root Container User**: Security-hardened Docker images  
+✅ **CORS Restricted**: Frontend origin whitelisting  
+✅ **Soft Delete**: Confirmation before permanent removal  
+✅ **Principle of Least Privilege**: Granular role assignments  
+
 
 ## Project Structure
 
@@ -259,15 +340,6 @@ ddns/
 - `OldHostname` (string?, nullable)
 - `Status` (string: added/active/refreshed/inactive)
 - `LastUpdatedAt` (DateTime)
-
-## Security Best Practices
-
-✅ Authorization Bearer tokens (not in query strings)  
-✅ Token validation on all protected endpoints  
-✅ Managed Identity for Azure authentication  
-✅ Non-root container user  
-✅ CORS restricted to frontend origin  
-✅ Soft delete with cleanup confirmation  
 
 ## License
 
