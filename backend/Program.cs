@@ -339,23 +339,25 @@ app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, Htt
 })
 .WithName("UpdateDnsRecord");
 
-app.MapGet("/api/dns/refresh", (HttpContext context, ILogger<Program> logger) =>
+app.MapGet("/api/dns/refresh", (HttpContext context) =>
 {
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    
     // Log request information
-    logger.LogInformation("GET /api/dns/refresh called");
+    logger.LogInformation("=== GET /api/dns/refresh called ===");
     
     // Log all headers
     logger.LogInformation("Headers:");
     foreach (var header in context.Request.Headers)
     {
-        logger.LogInformation("  {Key}: {Value}", header.Key, header.Value);
+        logger.LogInformation("  {Key}: {Value}", header.Key, string.Join(", ", header.Value.ToArray()));
     }
     
     // Log query string parameters
-    logger.LogInformation("Query String:");
+    logger.LogInformation("Query String Parameters:");
     foreach (var param in context.Request.Query)
     {
-        logger.LogInformation("  {Key}: {Value}", param.Key, param.Value);
+        logger.LogInformation("  {Key}: {Value}", param.Key, string.Join(", ", param.Value.ToArray()));
     }
     
     // Log Authorization token if present
@@ -364,12 +366,18 @@ app.MapGet("/api/dns/refresh", (HttpContext context, ILogger<Program> logger) =>
     {
         logger.LogInformation("Authorization Token: {Token}", token);
     }
+    else
+    {
+        logger.LogInformation("No Authorization Token found");
+    }
     
     // Log connection information
     logger.LogInformation("Remote IP: {RemoteIp}", context.Connection.RemoteIpAddress);
     logger.LogInformation("Request Path: {Path}", context.Request.Path);
     logger.LogInformation("Request Method: {Method}", context.Request.Method);
     logger.LogInformation("Request Protocol: {Protocol}", context.Request.Protocol);
+    logger.LogInformation("User Agent: {UserAgent}", context.Request.Headers.UserAgent.ToString());
+    logger.LogInformation("=== End of GET /api/dns/refresh log ===");
     
     return Results.Ok(new { message = "Logged successfully", timestamp = DateTime.UtcNow });
 })
