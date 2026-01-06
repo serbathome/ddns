@@ -341,23 +341,33 @@ app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, Htt
 
 app.MapGet("/api/dns/refresh", (HttpContext context) =>
 {
-    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
+    var logger = loggerFactory.CreateLogger("DnsRefreshGet");
+    
+    // Also write to console as backup
+    Console.WriteLine("=== GET /api/dns/refresh called ===");
     
     // Log request information
     logger.LogInformation("=== GET /api/dns/refresh called ===");
     
     // Log all headers
     logger.LogInformation("Headers:");
+    Console.WriteLine("Headers:");
     foreach (var header in context.Request.Headers)
     {
-        logger.LogInformation("  {Key}: {Value}", header.Key, string.Join(", ", header.Value.ToArray()));
+        var headerLog = $"  {header.Key}: {string.Join(", ", header.Value.ToArray())}";
+        logger.LogInformation(headerLog);
+        Console.WriteLine(headerLog);
     }
     
     // Log query string parameters
     logger.LogInformation("Query String Parameters:");
+    Console.WriteLine("Query String Parameters:");
     foreach (var param in context.Request.Query)
     {
-        logger.LogInformation("  {Key}: {Value}", param.Key, string.Join(", ", param.Value.ToArray()));
+        var paramLog = $"  {param.Key}: {string.Join(", ", param.Value.ToArray())}";
+        logger.LogInformation(paramLog);
+        Console.WriteLine(paramLog);
     }
     
     // Log Authorization token if present
@@ -365,19 +375,27 @@ app.MapGet("/api/dns/refresh", (HttpContext context) =>
     if (!string.IsNullOrEmpty(token))
     {
         logger.LogInformation("Authorization Token: {Token}", token);
+        Console.WriteLine($"Authorization Token: {token}");
     }
     else
     {
         logger.LogInformation("No Authorization Token found");
+        Console.WriteLine("No Authorization Token found");
     }
     
     // Log connection information
     logger.LogInformation("Remote IP: {RemoteIp}", context.Connection.RemoteIpAddress);
+    Console.WriteLine($"Remote IP: {context.Connection.RemoteIpAddress}");
     logger.LogInformation("Request Path: {Path}", context.Request.Path);
+    Console.WriteLine($"Request Path: {context.Request.Path}");
     logger.LogInformation("Request Method: {Method}", context.Request.Method);
+    Console.WriteLine($"Request Method: {context.Request.Method}");
     logger.LogInformation("Request Protocol: {Protocol}", context.Request.Protocol);
+    Console.WriteLine($"Request Protocol: {context.Request.Protocol}");
     logger.LogInformation("User Agent: {UserAgent}", context.Request.Headers.UserAgent.ToString());
+    Console.WriteLine($"User Agent: {context.Request.Headers.UserAgent}");
     logger.LogInformation("=== End of GET /api/dns/refresh log ===");
+    Console.WriteLine("=== End of GET /api/dns/refresh log ===");
     
     return Results.Ok(new { message = "Logged successfully", timestamp = DateTime.UtcNow });
 })
