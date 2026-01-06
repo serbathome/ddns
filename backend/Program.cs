@@ -339,6 +339,42 @@ app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, Htt
 })
 .WithName("UpdateDnsRecord");
 
+app.MapGet("/api/dns/refresh", (HttpContext context, ILogger<Program> logger) =>
+{
+    // Log request information
+    logger.LogInformation("GET /api/dns/refresh called");
+    
+    // Log all headers
+    logger.LogInformation("Headers:");
+    foreach (var header in context.Request.Headers)
+    {
+        logger.LogInformation("  {Key}: {Value}", header.Key, header.Value);
+    }
+    
+    // Log query string parameters
+    logger.LogInformation("Query String:");
+    foreach (var param in context.Request.Query)
+    {
+        logger.LogInformation("  {Key}: {Value}", param.Key, param.Value);
+    }
+    
+    // Log Authorization token if present
+    var token = ExtractTokenFromHeader(context);
+    if (!string.IsNullOrEmpty(token))
+    {
+        logger.LogInformation("Authorization Token: {Token}", token);
+    }
+    
+    // Log connection information
+    logger.LogInformation("Remote IP: {RemoteIp}", context.Connection.RemoteIpAddress);
+    logger.LogInformation("Request Path: {Path}", context.Request.Path);
+    logger.LogInformation("Request Method: {Method}", context.Request.Method);
+    logger.LogInformation("Request Protocol: {Protocol}", context.Request.Protocol);
+    
+    return Results.Ok(new { message = "Logged successfully", timestamp = DateTime.UtcNow });
+})
+.WithName("RefreshDnsRecordGet");
+
 app.MapPost("/api/dns/refresh", async (RefreshDnsRecordRequest request, HttpContext context, AppDbContext db) =>
 {
     // Extract token from Authorization header first, fallback to request body
