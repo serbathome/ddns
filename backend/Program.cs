@@ -339,7 +339,7 @@ app.MapPatch("/api/dns/{id}", async (int id, UpdateDnsRecordRequest request, Htt
 })
 .WithName("UpdateDnsRecord");
 
-app.MapGet("/api/dns/refresh", (HttpContext context) =>
+app.MapGet("/api/dns/refresh", async (HttpContext context) =>
 {
     var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
     var logger = loggerFactory.CreateLogger("DnsRefreshGet");
@@ -349,6 +349,11 @@ app.MapGet("/api/dns/refresh", (HttpContext context) =>
     
     // Log request information
     logger.LogInformation("=== GET /api/dns/refresh called ===");
+    
+    // Log timestamp
+    var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+    logger.LogInformation("Timestamp: {Timestamp}", timestamp);
+    Console.WriteLine($"Timestamp: {timestamp}");
     
     // Log all headers
     logger.LogInformation("Headers:");
@@ -363,11 +368,37 @@ app.MapGet("/api/dns/refresh", (HttpContext context) =>
     // Log query string parameters
     logger.LogInformation("Query String Parameters:");
     Console.WriteLine("Query String Parameters:");
-    foreach (var param in context.Request.Query)
+    if (context.Request.Query.Count > 0)
     {
-        var paramLog = $"  {param.Key}: {string.Join(", ", param.Value.ToArray())}";
-        logger.LogInformation(paramLog);
-        Console.WriteLine(paramLog);
+        foreach (var param in context.Request.Query)
+        {
+            var paramLog = $"  {param.Key}: {string.Join(", ", param.Value.ToArray())}";
+            logger.LogInformation(paramLog);
+            Console.WriteLine(paramLog);
+        }
+    }
+    else
+    {
+        logger.LogInformation("  (none)");
+        Console.WriteLine("  (none)");
+    }
+    
+    // Log cookies
+    logger.LogInformation("Cookies:");
+    Console.WriteLine("Cookies:");
+    if (context.Request.Cookies.Count > 0)
+    {
+        foreach (var cookie in context.Request.Cookies)
+        {
+            var cookieLog = $"  {cookie.Key}: {cookie.Value}";
+            logger.LogInformation(cookieLog);
+            Console.WriteLine(cookieLog);
+        }
+    }
+    else
+    {
+        logger.LogInformation("  (none)");
+        Console.WriteLine("  (none)");
     }
     
     // Log Authorization token if present
@@ -386,14 +417,63 @@ app.MapGet("/api/dns/refresh", (HttpContext context) =>
     // Log connection information
     logger.LogInformation("Remote IP: {RemoteIp}", context.Connection.RemoteIpAddress);
     Console.WriteLine($"Remote IP: {context.Connection.RemoteIpAddress}");
+    logger.LogInformation("Local IP: {LocalIp}", context.Connection.LocalIpAddress);
+    Console.WriteLine($"Local IP: {context.Connection.LocalIpAddress}");
+    logger.LogInformation("Remote Port: {RemotePort}", context.Connection.RemotePort);
+    Console.WriteLine($"Remote Port: {context.Connection.RemotePort}");
+    
+    // Log request details
     logger.LogInformation("Request Path: {Path}", context.Request.Path);
     Console.WriteLine($"Request Path: {context.Request.Path}");
     logger.LogInformation("Request Method: {Method}", context.Request.Method);
     Console.WriteLine($"Request Method: {context.Request.Method}");
     logger.LogInformation("Request Protocol: {Protocol}", context.Request.Protocol);
     Console.WriteLine($"Request Protocol: {context.Request.Protocol}");
+    logger.LogInformation("Request Scheme: {Scheme}", context.Request.Scheme);
+    Console.WriteLine($"Request Scheme: {context.Request.Scheme}");
+    logger.LogInformation("Host: {Host}", context.Request.Host);
+    Console.WriteLine($"Host: {context.Request.Host}");
+    logger.LogInformation("Content-Type: {ContentType}", context.Request.ContentType ?? "(none)");
+    Console.WriteLine($"Content-Type: {context.Request.ContentType ?? "(none)"}");
+    logger.LogInformation("Content-Length: {ContentLength}", context.Request.ContentLength?.ToString() ?? "(none)");
+    Console.WriteLine($"Content-Length: {context.Request.ContentLength?.ToString() ?? "(none)"}");
+    
+    // Log User Agent
     logger.LogInformation("User Agent: {UserAgent}", context.Request.Headers.UserAgent.ToString());
     Console.WriteLine($"User Agent: {context.Request.Headers.UserAgent}");
+    
+    // Log Referer
+    var referer = context.Request.Headers.Referer.ToString();
+    logger.LogInformation("Referer: {Referer}", string.IsNullOrEmpty(referer) ? "(none)" : referer);
+    Console.WriteLine($"Referer: {(string.IsNullOrEmpty(referer) ? "(none)" : referer)}");
+    
+    // Try to read request body (if any - uncommon for GET)
+    logger.LogInformation("Request Body:");
+    Console.WriteLine("Request Body:");
+    try
+    {
+        if (context.Request.ContentLength > 0)
+        {
+            context.Request.EnableBuffering();
+            using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
+            var body = await reader.ReadToEndAsync();
+            context.Request.Body.Position = 0; // Reset for potential downstream processing
+            
+            logger.LogInformation("  Body: {Body}", body);
+            Console.WriteLine($"  Body: {body}");
+        }
+        else
+        {
+            logger.LogInformation("  (empty or no body)");
+            Console.WriteLine("  (empty or no body)");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogInformation("  Error reading body: {Error}", ex.Message);
+        Console.WriteLine($"  Error reading body: {ex.Message}");
+    }
+    
     logger.LogInformation("=== End of GET /api/dns/refresh log ===");
     Console.WriteLine("=== End of GET /api/dns/refresh log ===");
     
